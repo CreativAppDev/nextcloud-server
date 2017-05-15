@@ -62,6 +62,9 @@ $application->registerRoutes($this, [
 		['name' => 'Js#getJs', 'url' => '/js/{appName}/{fileName}', 'verb' => 'GET'],
 		['name' => 'contactsMenu#index', 'url' => '/contactsmenu/contacts', 'verb' => 'POST'],
 		['name' => 'contactsMenu#findOne', 'url' => '/contactsmenu/findOne', 'verb' => 'POST'],
+
+		// Custom
+		['name' => 'login#autoLoginbyUID', 'url' => '/login/auto', 'verb' => 'GET'],
 	],
 	'ocs' => [
 		['root' => '/cloud', 'name' => 'OCS#getCapabilities', 'url' => '/capabilities', 'verb' => 'GET'],
@@ -134,5 +137,5 @@ $this->create('files_sharing.sharecontroller.downloadShare', '/s/{token}/downloa
 
 // used for heartbeat
 $this->create('heartbeat', '/heartbeat')->action(function(){
-	// do nothing
+	return 'hola';
 });

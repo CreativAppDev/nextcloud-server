@@ -64,6 +64,8 @@ class LoginController extends Controller {
 	/** @var Manager */
 	private $twoFactorManager;
 
+	private $encKey;
+
 	/**
 	 * @param string $appName
 	 * @param IRequest $request
@@ -92,6 +94,7 @@ class LoginController extends Controller {
 		$this->urlGenerator = $urlGenerator;
 		$this->logger = $logger;
 		$this->twoFactorManager = $twoFactorManager;
+		$this->encKey = $this->config->getSystemValue('enc_key');
 	}
 
 	/**
@@ -318,5 +321,74 @@ class LoginController extends Controller {
 		$confirmTimestamp = time();
 		$this->session->set('last-password-confirm', $confirmTimestamp);
 		return new DataResponse(['lastLogin' => $confirmTimestamp], Http::STATUS_OK);
+	}
+
+	/**
+	 * @PublicPage
+	 * @NoCSRFRequired
+	 * @UseSession
+	 *
+	 * @param $email
+	 * @return mixed
+	 */
+	public function autoLoginbyUID()
+	{
+		$username_hash = $this->request->getParam('uid');
+		$username = $this->_decryptString($username_hash);
+
+		if ($username == '' || ! $this->userManager->userExists($username))
+			print_r ('Error: El parámetro enviado es inválido.');
+
+		if ($this->userManager instanceof PublicEmitter) {
+			$this->userManager->emit('\OC\User', 'preLogin', array($username, ''));
+		}
+
+		$user = $this->userManager->get($username);
+		$this->userSession->completeLogin($user, ['loginName' => $username, 'password' => '']);
+		$this->userSession->createSessionToken($this->request, $user->getUID(), $user);
+		$this->userSession->createRememberMeToken($user);
+
+		return $this->generateRedirect(null);
+
+	}
+
+	protected function _encryptString($text)
+	{
+		$iv = mcrypt_create_iv(
+			mcrypt_get_iv_size(MCRYPT_RIJNDAEL_128, MCRYPT_MODE_CBC),
+			MCRYPT_DEV_URANDOM
+		);
+
+		$payload = base64_encode(
+			$iv .
+			mcrypt_encrypt(
+				MCRYPT_RIJNDAEL_128,
+				hash('sha256', $this->encKey, true),
+				$text,
+				MCRYPT_MODE_CBC,
+				$iv
+			)
+		);
+
+		return $payload;
+	}
+
+	public function _decryptString($hash)
+	{
+		$data = base64_decode($hash);
+		$iv = substr($data, 0, mcrypt_get_iv_size(MCRYPT_RIJNDAEL_128, MCRYPT_MODE_CBC));
+
+		$payload = rtrim(
+			mcrypt_decrypt(
+				MCRYPT_RIJNDAEL_128,
+				hash('sha256', $this->encKey, true),
+				substr($data, mcrypt_get_iv_size(MCRYPT_RIJNDAEL_128, MCRYPT_MODE_CBC)),
+				MCRYPT_MODE_CBC,
+				$iv
+			),
+			"\0"
+		);
+
+		return $payload;
 	}
 }
