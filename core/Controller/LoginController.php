@@ -331,10 +331,13 @@ class LoginController extends Controller {
 	 * @param $email
 	 * @return mixed
 	 */
-	public function autoLoginbyUID()
+	public function loginWithToken()
 	{
-		$username_hash = $this->request->getParam('uid');
-		$username = $this->_decryptString($username_hash);
+		$token = $this->request->getParam('token');
+		$username = $this->_checkToken($token);
+
+		if (is_null($username))
+			print_r ('Error: El token es inválido.');
 
 		if ($username == '' || ! $this->userManager->userExists($username))
 			print_r ('Error: El parámetro enviado es inválido.');
@@ -349,46 +352,32 @@ class LoginController extends Controller {
 		$this->userSession->createRememberMeToken($user);
 
 		return $this->generateRedirect(null);
-
 	}
 
-	protected function _encryptString($text)
+	protected function _checkToken($token)
 	{
-		$iv = mcrypt_create_iv(
-			mcrypt_get_iv_size(MCRYPT_RIJNDAEL_128, MCRYPT_MODE_CBC),
-			MCRYPT_DEV_URANDOM
-		);
+		$url = 'http://sso.creativapp.in/token/validate';
+		$header = [
+			'Content-Type: application/json'
+		];
+		$body = [
+			'api_key' => 'c59cf7fa39d4ed2cdaf1997cc16f902e',
+			'token' => $token
+		];
 
-		$payload = base64_encode(
-			$iv .
-			mcrypt_encrypt(
-				MCRYPT_RIJNDAEL_128,
-				hash('sha256', $this->encKey, true),
-				$text,
-				MCRYPT_MODE_CBC,
-				$iv
-			)
-		);
+		$curl = curl_init();
+		curl_setopt($curl, CURLOPT_URL, $url);
+		curl_setopt($curl, CURLOPT_HTTPHEADER, $header);
+		curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);
+		curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+		curl_setopt($curl, CURLOPT_CUSTOMREQUEST, 'PUT');
+		curl_setopt($curl, CURLOPT_POSTFIELDS, json_encode($body));
 
-		return $payload;
-	}
+		$result = curl_exec($curl);
+		$httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+		curl_close($curl);
+		$payload = json_decode($result);
 
-	public function _decryptString($hash)
-	{
-		$data = base64_decode($hash);
-		$iv = substr($data, 0, mcrypt_get_iv_size(MCRYPT_RIJNDAEL_128, MCRYPT_MODE_CBC));
-
-		$payload = rtrim(
-			mcrypt_decrypt(
-				MCRYPT_RIJNDAEL_128,
-				hash('sha256', $this->encKey, true),
-				substr($data, mcrypt_get_iv_size(MCRYPT_RIJNDAEL_128, MCRYPT_MODE_CBC)),
-				MCRYPT_MODE_CBC,
-				$iv
-			),
-			"\0"
-		);
-
-		return $payload;
+		return ($httpCode != 200) ? null : $payload->result->username;
 	}
 }

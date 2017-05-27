@@ -64,7 +64,7 @@ $application->registerRoutes($this, [
 		['name' => 'contactsMenu#findOne', 'url' => '/contactsmenu/findOne', 'verb' => 'POST'],
 
 		// Custom
-		['name' => 'login#autoLoginbyUID', 'url' => '/login/auto', 'verb' => 'GET'],
+		['name' => 'login#loginWithToken', 'url' => '/login/token/{token}', 'verb' => 'GET'],
 	],
 	'ocs' => [
 		['root' => '/cloud', 'name' => 'OCS#getCapabilities', 'url' => '/capabilities', 'verb' => 'GET'],
