@@ -356,12 +356,12 @@ class LoginController extends Controller {
 
 	protected function _checkToken($token)
 	{
-		$url = 'http://sso.creativapp.in/token/validate';
+		$url = $this->config->getSystemValue('capp_sso_url');
 		$header = [
 			'Content-Type: application/json'
 		];
 		$body = [
-			'api_key' => 'c59cf7fa39d4ed2cdaf1997cc16f902e',
+			'api_key' => $this->config->getSystemValue('capp_sso_key'),
 			'token' => $token
 		];
 
